@@ -53,7 +53,7 @@ async fn render_views(req: &mut Request, res: &mut Response) {
     match Tera::new("templates/**/*") {
         Ok(mut tera) => {
             tera.register_function("include_file", generate_include(tera.clone()));
-            match tera.render(&path, &Context::default()) {
+            match tera.render(if path.is_empty(){"index.html"}else{&path}, &Context::default()) {
                 Ok(s) => {
                     res.render(Text::Html(s));
                 }
@@ -71,6 +71,8 @@ async fn render_views(req: &mut Request, res: &mut Response) {
 }
 #[tokio::main]
 async fn main() {
+    let config = tokio::fs::read_to_string("./config.json").await.expect("config.json not found or has invalid content");
+    let config = serde_json::from_str::<Value>(&config).expect("parsing config.json occurs an error");
     let public_router = Router::with_path("public/<**>").get(
         StaticDir::new(["public"])
             .with_defaults("index.html")
@@ -79,7 +81,7 @@ async fn main() {
     let view_router = Router::with_path("/<**rest_path>").get(render_views);
     let router = Router::new().push(public_router);
     let router = router.push(view_router);
-    Server::new(TcpListener::bind("0.0.0.0:8080"))
+    Server::new(TcpListener::bind(config.get("host").expect("host not found in config.json").as_str().expect("host has none")))
         .serve(router)
         .await;
 }
