@@ -7,6 +7,8 @@
     <title>Document</title>
 </head>
 <body>
+    {% set_global my_var = `{"name":"abc"}` | json_decode | safe %}
+    <div>{{my_var.name}}</div>
     <div>1111</div>
     {{ include_file(path="common/header.html", context=`{"header":123, "list":["a","b","c"]}`) | safe }}
 </body>

@@ -13,7 +13,7 @@ fn generate_include(tera: Tera) -> impl Function {
                 //println!("value === {v}");
                 let context_value = v
                     .as_str()
-                    .ok_or(tera::Error::msg("context must be a json string"))?;
+                    .ok_or(tera::Error::msg("context must be a json object string"))?;
                 let v = serde_json::from_str::<Value>(context_value)?;
                 let context = Context::from_value(serde_json::json!({ "context": v }))?;
                 let r = tera
@@ -42,6 +42,7 @@ fn generate_include(tera: Tera) -> impl Function {
     }
 }
 
+
 #[handler]
 async fn render_views(req: &mut Request, res: &mut Response) {
     let Some(path) = req.param::<String>("**rest_path") else{
@@ -53,6 +54,11 @@ async fn render_views(req: &mut Request, res: &mut Response) {
     match Tera::new("templates/**/*") {
         Ok(mut tera) => {
             tera.register_function("include_file", generate_include(tera.clone()));
+            tera.register_filter("json_decode", |v:&Value, _args:&HashMap<String, Value>|->Result<Value>{
+                let v = v.as_str().ok_or(tera::Error::msg("value must be a json object string"))?;
+                let v = serde_json::from_str::<Value>(v)?;
+                Ok(v)
+            });
             match tera.render(if path.is_empty(){"index.html"}else{&path}, &Context::default()) {
                 Ok(s) => {
                     res.render(Text::Html(s));
